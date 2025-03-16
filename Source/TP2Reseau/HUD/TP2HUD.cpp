@@ -22,19 +22,18 @@ void ATP2HUD::AddLagComponent()
 	if (!PC) return;
 	ATP2ReseauCharacter* PlayerCharacter = Cast<ATP2ReseauCharacter>(PC->GetPawn());
 	if (!PlayerCharacter) return;
-	LagCompComponent = PlayerCharacter->FindComponentByClass<ULagCompensationComponent>();
+	LagComponent = PlayerCharacter->FindComponentByClass<ULagCompensationComponent>();
 }
 
 void ATP2HUD::ShowPackageHUD(bool bShow, float Duration)
 {
-	if (!LagCompComponent)
+	if (!LagComponent)
 	{
 		AddLagComponent();
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("LagCompComponent is null"));
 		return;
 	}
-	LagCompComponent->SetShowPackage(bShow);
-	LagCompComponent->SetShowPackageDuration(Duration);
+	LagComponent->SetShowPackage(bShow);
+	LagComponent->SetShowPackageDuration(Duration);
 }
 
 void ATP2HUD::AddCharacterOverlay()

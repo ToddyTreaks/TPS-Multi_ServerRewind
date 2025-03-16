@@ -31,10 +31,8 @@ class TP2RESEAU_API ATP2HUD : public AHUD
 
 public:
 	virtual void DrawHUD() override;
-
 	UPROPERTY(EditAnywhere, Category = "Player Stats")
 	TSubclassOf<class UUserWidget> CharacterOverlayClass;
-	
 	class UCharacterOverlay* CharacterOverlay;
 
 protected:
@@ -43,15 +41,12 @@ protected:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void AddLagComponent();
 	virtual void ShowPackageHUD(bool bShow, float Duration);
-
 	bool bShowFramePackageStatus = false;
-
 	
 private:
 	FHUDPackage HUDPackage;
-
 	void DrawCrosshair (UTexture2D* Texture, FVector2d ViewportCenter, FLinearColor CrosshairColor);
-	class ULagCompensationComponent* LagCompComponent = nullptr;
+	class ULagCompensationComponent* LagComponent = nullptr;
 
 public:
 	FORCEINLINE void SetHUDPackage(const FHUDPackage& Package) { HUDPackage = Package;}
