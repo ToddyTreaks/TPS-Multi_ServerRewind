@@ -49,11 +49,11 @@ The project follows the teachings from the course:
 ## What I Learned
 Through this project, I gained valuable experience in:
 
-**Unreal Engine Multiplayer Networking** – Implementing replication, Remote Procedure Calls (RPCs), and server authority logic.  
-**Network Optimization Techniques** – Minimizing bandwidth usage while ensuring smooth gameplay.  
-**Server-Side Rewind & Lag Compensation** – Creating a system that fairly validates hits in high-latency conditions.  
-**Multiplayer Game Class Structure** – Properly using **GameMode, GameState, PlayerState, Character, PlayerController, and GameInstance** for a networked game.  
-**Fairness in Competitive Multiplayer Games** – Balancing the trade-off between responsiveness and accuracy.
+- **Unreal Engine Multiplayer Networking** – Implementing replication, Remote Procedure Calls (RPCs), and server authority logic.  
+- **Network Optimization Techniques** – Minimizing bandwidth usage while ensuring smooth gameplay.  
+- **Server-Side Rewind & Lag Compensation** – Creating a system that fairly validates hits in high-latency conditions.  
+- **Multiplayer Game Class Structure** – Properly using **GameMode, GameState, PlayerState, Character, PlayerController, and GameInstance** for a networked game.  
+- **Fairness in Competitive Multiplayer Games** – Balancing the trade-off between responsiveness and accuracy.
 ---
 ## Course Reference
 This project follows core lessons from Stephen Ulibarri's course, including:
