@@ -24,12 +24,10 @@ void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 		
 		if (GEngine)
 		{
-			GEngine->AddOnScreenDebugMessage(1, 5.f, FColor::Yellow, FString::Printf(TEXT("Number of players: %d"), NumberOfPlayers));
 
 			if(APlayerState* PlayerState = NewPlayer->GetPlayerState<APlayerState>())
 			{
 				FString PlayerName = PlayerState->GetPlayerName();
-				GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, FString::Printf(TEXT("%s has joined the game!"), *PlayerName));
 			}
 		}
 	}
