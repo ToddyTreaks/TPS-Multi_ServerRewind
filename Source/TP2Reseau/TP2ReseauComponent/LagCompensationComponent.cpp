@@ -7,6 +7,7 @@
 #include "TP2Reseau/Character/TP2ReseauCharacter.h"
 #include "DrawDebugHelpers.h"
 #include "Kismet/GameplayStatics.h"
+#include "TP2Reseau/PlayerController/TP2PlayerController.h"
 
 ULagCompensationComponent::ULagCompensationComponent()
 {
@@ -17,7 +18,7 @@ ULagCompensationComponent::ULagCompensationComponent()
 void ULagCompensationComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
+	Character = Character == nullptr ? Cast<ATP2ReseauCharacter>(GetOwner()) : Character;
 }
 
 
@@ -144,7 +145,19 @@ void ULagCompensationComponent::MoveBoxes(ATP2ReseauCharacter* HitCharacter, con
 		HitBoxPair.Value->SetWorldLocation(Package.HitBoxInfo[HitBoxPair.Key].Location);
 		HitBoxPair.Value->SetWorldRotation(Package.HitBoxInfo[HitBoxPair.Key].Rotation);
 		HitBoxPair.Value->SetBoxExtent(Package.HitBoxInfo[HitBoxPair.Key].BoxExtent);
+
+		DrawDebugBox(
+	GetWorld(),
+	HitBoxPair.Value->GetComponentLocation(),
+	HitBoxPair.Value->GetScaledBoxExtent(),
+	FQuat(HitBoxPair.Value->GetComponentRotation()),
+	FColor::Green,
+	false,
+	5.0f
+);
+
 	}
+	
 
 }
 
@@ -175,7 +188,7 @@ void ULagCompensationComponent::EnableCharacterMeshCollision(ATP2ReseauCharacter
 }
 
 
-void ULagCompensationComponent::ShowFramePackage(FFramePackage& Package, const FColor& Color)
+void ULagCompensationComponent::ShowFramePackage(FFramePackage& Package, const FColor& Color, float Duration)
 {
 	for (auto& BoxInfo : Package.HitBoxInfo)
 	{
@@ -186,7 +199,7 @@ void ULagCompensationComponent::ShowFramePackage(FFramePackage& Package, const F
 			FQuat(BoxInfo.Value.Rotation),
 			Color,
 			false,
-			4.f
+			Duration
 		);
 	}
 }
@@ -195,6 +208,7 @@ FServerSideRewindResult ULagCompensationComponent::ServerSideRewind(class ATP2Re
 	const FVector_NetQuantize& TraceStart, const FVector_NetQuantize& HitLocation, float HitTime)
 {	
 	FFramePackage FrameToCheck = GetFrameToCheck(HitCharacter, HitTime);
+
 	return ConfirmHit(FrameToCheck, HitCharacter, TraceStart, HitLocation);
 }
 
@@ -254,21 +268,16 @@ FFramePackage ULagCompensationComponent::GetFrameToCheck(ATP2ReseauCharacter* Hi
 	return FrameToCheck;
 }
 
+
 void ULagCompensationComponent::ServerScoreRequest_Implementation(ATP2ReseauCharacter* HitCharacter,
-	const FVector_NetQuantize& TraceStart, const FVector_NetQuantize& HitLocation, float HitTime,
-	class AWeapon* DamageCauser)
+                                                                  const FVector_NetQuantize& TraceStart, const FVector_NetQuantize& HitLocation, float HitTime,
+                                                                  class AWeapon* DamageCauser)
 {
 	FServerSideRewindResult Confirm = ServerSideRewind(HitCharacter, TraceStart, HitLocation, HitTime);
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("HERE") );
-	if (!Character) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Character is null"));
-	if (!HitCharacter) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("HitCharacter is null"));
-	if (!DamageCauser) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("DamageCauser is null"));
-	if (!Confirm.bHitConfirmed) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Hit not confirmed"));
 	
 	if (Character && HitCharacter && DamageCauser && Confirm.bHitConfirmed)
 	{
 		UGameplayStatics::ApplyDamage(HitCharacter, DamageCauser->GetDamage(), Character->Controller, DamageCauser, UDamageType::StaticClass());
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Hit Confirmed: %s"), Confirm.bHeadShot ? TEXT("HeadShot") : TEXT("BodyShot")));
 	}
 }
 
@@ -282,7 +291,7 @@ void ULagCompensationComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 
 void ULagCompensationComponent::SaveFramePackage()
 {
-	if (Character == nullptr || !Character->HasAuthority()) return;
+	
 	if (FrameHistory.Num() <= 1)
 	{
 		FFramePackage ThisFrame;
@@ -300,8 +309,10 @@ void ULagCompensationComponent::SaveFramePackage()
 		FFramePackage ThisFrame;
 		SaveFramePackage(ThisFrame);
 		FrameHistory.AddHead(ThisFrame);
-
-		//ShowFramePackage(ThisFrame, FColor::Red);
+		if (bShowPackage)
+		{
+			ShowFramePackage(ThisFrame, FColor::Red, fShowPackageDuration);
+		}
 	}
 }
 

@@ -116,7 +116,6 @@ void UCombatComponent::OnRep_Aiming()
 	if (Character && Character->IsLocallyControlled())
 	{
 		bIsAiming = bAimButtonPressed;
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, bIsAiming? TEXT("Aiming") : TEXT("Not Aiming"));
 	}
 }
 

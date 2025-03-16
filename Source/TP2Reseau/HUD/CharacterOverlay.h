@@ -30,4 +30,10 @@ public:
 	UPROPERTY(meta = (BindWidgetAnim), Transient)
 	class UWidgetAnimation* HighPingAnimation;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character Overlay")
+	float rewindDurationShow = 1.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character Overlay")
+	bool bShowRewind = false;
+
 };

@@ -40,12 +40,21 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	void AddCharacterOverlay();
+	virtual void Tick(float DeltaSeconds) override;
+	virtual void AddLagComponent();
+	virtual void ShowPackageHUD(bool bShow, float Duration);
+
+	bool bShowFramePackageStatus = false;
+
 	
 private:
 	FHUDPackage HUDPackage;
 
 	void DrawCrosshair (UTexture2D* Texture, FVector2d ViewportCenter, FLinearColor CrosshairColor);
+	class ULagCompensationComponent* LagCompComponent = nullptr;
 
 public:
 	FORCEINLINE void SetHUDPackage(const FHUDPackage& Package) { HUDPackage = Package;}
 };
+
+

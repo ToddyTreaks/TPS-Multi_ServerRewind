@@ -6,11 +6,35 @@
 #include "CharacterOverlay.h"
 #include "Blueprint/UserWidget.h"
 #include "GameFramework/PlayerController.h"
+#include "TP2Reseau/Character/TP2ReseauCharacter.h"
+#include "TP2Reseau/TP2ReseauComponent/LagCompensationComponent.h"
 
 void ATP2HUD::BeginPlay()
 {
 	Super::BeginPlay();
 	AddCharacterOverlay();
+}
+
+void ATP2HUD::AddLagComponent()
+{
+	Super::PostInitializeComponents();
+	APlayerController* PC = GetOwningPlayerController();
+	if (!PC) return;
+	ATP2ReseauCharacter* PlayerCharacter = Cast<ATP2ReseauCharacter>(PC->GetPawn());
+	if (!PlayerCharacter) return;
+	LagCompComponent = PlayerCharacter->FindComponentByClass<ULagCompensationComponent>();
+}
+
+void ATP2HUD::ShowPackageHUD(bool bShow, float Duration)
+{
+	if (!LagCompComponent)
+	{
+		AddLagComponent();
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("LagCompComponent is null"));
+		return;
+	}
+	LagCompComponent->SetShowPackage(bShow);
+	LagCompComponent->SetShowPackageDuration(Duration);
 }
 
 void ATP2HUD::AddCharacterOverlay()
@@ -25,6 +49,18 @@ void ATP2HUD::AddCharacterOverlay()
 		}
 	}
 }
+
+void ATP2HUD::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	if (bShowFramePackageStatus != CharacterOverlay->bShowRewind )
+	{
+		bShowFramePackageStatus = CharacterOverlay->bShowRewind;
+		ShowPackageHUD(CharacterOverlay->bShowRewind, CharacterOverlay->rewindDurationShow);
+	}
+	
+}
+
 void ATP2HUD::DrawHUD()
 {
 	Super::DrawHUD();

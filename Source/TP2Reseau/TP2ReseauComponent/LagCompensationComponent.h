@@ -56,7 +56,7 @@ public:
 	ULagCompensationComponent();
 	friend class ATP2ReseauCharacter;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-	void ShowFramePackage(FFramePackage& Package, const FColor& Color);
+	void ShowFramePackage(FFramePackage& Package, const FColor& Color, float Duration);
 	FServerSideRewindResult ServerSideRewind(class ATP2ReseauCharacter* HitCharacter, const FVector_NetQuantize& TraceStart, const FVector_NetQuantize& HitLocation, float HitTime);
 	UFUNCTION(Server, Reliable)
 	void ServerScoreRequest(ATP2ReseauCharacter* HitCharacter, const FVector_NetQuantize& TraceStart, const FVector_NetQuantize& HitLocation, float HitTime, class AWeapon* DamageCauser);
@@ -82,10 +82,17 @@ private:
 	TDoubleLinkedList<FFramePackage> FrameHistory;
 
 	UPROPERTY(EditAnywhere)
-	float MaxRecordTime = 1.f;
+	float MaxRecordTime = 2.f;
+
+	
+	UPROPERTY(EditAnywhere)
+	bool bShowPackage = false;
+
+	UPROPERTY(EditAnywhere)
+	float fShowPackageDuration = 1.f;
 
 public:	
-	
 
-		
+	FORCEINLINE void SetShowPackage(bool bShow) { bShowPackage = bShow; }
+	FORCEINLINE void SetShowPackageDuration(float Duration) { fShowPackageDuration = Duration; }
 };
