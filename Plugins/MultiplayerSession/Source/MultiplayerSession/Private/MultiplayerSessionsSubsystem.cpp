@@ -15,6 +15,9 @@ UMultiplayerSessionsSubsystem::UMultiplayerSessionsSubsystem()
 	if (Subsystem)
 	{
 		SessionInterface = Subsystem->GetSessionInterface();
+		if (GEngine) {
+			GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Green, FString::Printf(TEXT("Subsytem : %s"), *Subsystem->GetSubsystemName().ToString()));
+		}
 	}
 
 	CreateSessionCompleteDelegate = FOnCreateSessionCompleteDelegate::CreateUObject(this, &ThisClass::OnCreateSessionComplete);
@@ -84,7 +87,6 @@ void UMultiplayerSessionsSubsystem::FindSession(int32 MaxSearchResults)
 		SessionInterface->ClearOnFindSessionsCompleteDelegate_Handle(FindSessionsCompleteDelegateHandle);
         MultiplayerOnFindSessionComplete.Broadcast(TArray<FOnlineSessionSearchResult>(), false);
 	}
-	
 }
 
 void UMultiplayerSessionsSubsystem::JoinSession(const FOnlineSessionSearchResult& SessionResult)
@@ -137,19 +139,36 @@ void UMultiplayerSessionsSubsystem::OnCreateSessionComplete(FName SessionName, b
 
 void UMultiplayerSessionsSubsystem::OnFindSessionsComplete(bool bWasSuccessful)
 {
+
 	if (SessionInterface)
 	{
 		SessionInterface->ClearOnFindSessionsCompleteDelegate_Handle(FindSessionsCompleteDelegateHandle);
 	}
 
-	if (LastSessionSearch->SearchResults.Num() <= 0)
-    {
+	if (!bWasSuccessful || LastSessionSearch->SearchResults.Num() <= 0)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("No sessions found"));
 		MultiplayerOnFindSessionComplete.Broadcast(TArray<FOnlineSessionSearchResult>(), false);
-	    return;
-    }
-	
+		return;
+	}
+
+	for (const FOnlineSessionSearchResult& Result : LastSessionSearch->SearchResults)
+	{
+		FString Id = Result.GetSessionIdStr();
+		FString User = Result.Session.OwningUserName;
+
+		if (User.IsEmpty())
+		{
+			User = TEXT("Unknown");
+		}
+
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan,
+			FString::Printf(TEXT("SessionId: %s, User: %s"), *Id, *User));
+	}
+
 	MultiplayerOnFindSessionComplete.Broadcast(LastSessionSearch->SearchResults, bWasSuccessful);
 }
+
 
 void UMultiplayerSessionsSubsystem::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result)
 {

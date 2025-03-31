@@ -58,10 +58,14 @@ void AProjectile::MulticastHit_Implementation()
 	{
 		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, GetActorTransform());
 	}
+
+/*
 	if (ImpactSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
 	}
+*/
+
 	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Projectile Hit"));
 	Destroy();
 }

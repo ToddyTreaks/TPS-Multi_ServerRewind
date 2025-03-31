@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Sound/SoundBase.h"
 #include "Projectile.generated.h"
 
 UCLASS()
@@ -43,9 +44,7 @@ private:
 	UPROPERTY(EditAnywhere)
 	UParticleSystem* ImpactParticles;
 
-	UPROPERTY(EditAnywhere)
-	USoundCue* ImpactSound;
-
-	
+	//UPROPERTY(EditAnywhere)
+	// USoundCue* ImpactSound;
 };
 
