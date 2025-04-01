@@ -19,6 +19,7 @@ void ULagCompensationComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	Character = Character == nullptr ? Cast<ATP2ReseauCharacter>(GetOwner()) : Character;
+	CapsuleComponent = CapsuleComponent == nullptr ? Character->GetCapsuleComponent() : CapsuleComponent;
 }
 
 
@@ -145,20 +146,18 @@ void ULagCompensationComponent::MoveBoxes(ATP2ReseauCharacter* HitCharacter, con
 		HitBoxPair.Value->SetWorldLocation(Package.HitBoxInfo[HitBoxPair.Key].Location);
 		HitBoxPair.Value->SetWorldRotation(Package.HitBoxInfo[HitBoxPair.Key].Rotation);
 		HitBoxPair.Value->SetBoxExtent(Package.HitBoxInfo[HitBoxPair.Key].BoxExtent);
-
+		/*
 		DrawDebugBox(
-	GetWorld(),
-	HitBoxPair.Value->GetComponentLocation(),
-	HitBoxPair.Value->GetScaledBoxExtent(),
-	FQuat(HitBoxPair.Value->GetComponentRotation()),
-	FColor::Green,
-	false,
-	5.0f
-);
-
+		GetWorld(),
+		HitBoxPair.Value->GetComponentLocation(),
+		HitBoxPair.Value->GetScaledBoxExtent(),
+		FQuat(HitBoxPair.Value->GetComponentRotation()),
+		FColor::Green,
+		false,
+		5.0f
+		);
+		*/
 	}
-	
-
 }
 
 void ULagCompensationComponent::ResetHitBoxes(ATP2ReseauCharacter* HitCharacter, const FFramePackage& Package)
@@ -268,7 +267,7 @@ FFramePackage ULagCompensationComponent::GetFrameToCheck(ATP2ReseauCharacter* Hi
 	return FrameToCheck;
 }
 
-
+// HERREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
 void ULagCompensationComponent::ServerScoreRequest_Implementation(ATP2ReseauCharacter* HitCharacter,
                                                                   const FVector_NetQuantize& TraceStart, const FVector_NetQuantize& HitLocation, float HitTime,
                                                                   class AWeapon* DamageCauser)
@@ -279,12 +278,20 @@ void ULagCompensationComponent::ServerScoreRequest_Implementation(ATP2ReseauChar
 	{
 		UGameplayStatics::ApplyDamage(HitCharacter, DamageCauser->GetDamage(), Character->Controller, DamageCauser, UDamageType::StaticClass());
 	}
+
+
+	bool bHitConfirm = ServerRewindResult(HitCharacter, TraceStart, HitLocation, HitTime);
 }
 
 void ULagCompensationComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	SaveFramePackage();
+
+	if (Character->HasAuthority())
+	{
+		SavedMove();
+	}
 }
 
 
@@ -311,7 +318,7 @@ void ULagCompensationComponent::SaveFramePackage()
 		FrameHistory.AddHead(ThisFrame);
 		if (bShowPackage)
 		{
-			ShowFramePackage(ThisFrame, FColor::Red, fShowPackageDuration);
+			//ShowFramePackage(ThisFrame, FColor::Red, fShowPackageDuration);
 		}
 	}
 }
@@ -334,4 +341,197 @@ void ULagCompensationComponent::SaveFramePackage(FFramePackage& Package)
 	}
 }
 
+// STOOOOOOOOOOOOOOOOOOOP
+
+void ULagCompensationComponent::SavedMove()
+{
+	if (!Character && !CapsuleComponent) return;
+
+	if (SavedMoves.Num() <= 1)
+	{
+		FSavedMove Move;
+		Move.Time = GetWorld()->GetTimeSeconds();
+		Move.CapsuleTransform = CapsuleComponent->GetComponentTransform();
+		SavedMoves.AddHead(Move);
+	}
+	else
+	{
+		float HistoryLength = SavedMoves.GetHead()->GetValue().Time - SavedMoves.GetTail()->GetValue().Time;
+		// GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("History Length: %f"), HistoryLength));
+		while (HistoryLength > MaxRecordTime)
+		{
+			SavedMoves.RemoveNode(SavedMoves.GetTail());
+			HistoryLength = SavedMoves.GetHead()->GetValue().Time - SavedMoves.GetTail()->GetValue().Time;
+		}
+		FSavedMove Move;
+		Move.Time = GetWorld()->GetTimeSeconds();
+		Move.CapsuleTransform = CapsuleComponent->GetComponentTransform();
+		SavedMoves.AddHead(Move);
+		if (bShowPackage)
+		{
+			ShowHistory(Move, FColor::Red, fShowPackageDuration);
+		}
+	}
+}
+
+void ULagCompensationComponent::ShowHistory(FSavedMove MoveSaved, const FColor& Color, float Duration)
+{
+	if (SavedMoves.Num() == 0) return;
+	
+	FVector Scale = MoveSaved.CapsuleTransform.GetScale3D();
+	float Capsulehalfheight = CapsuleComponent->GetUnscaledCapsuleHalfHeight() * Scale.Z;
+	float CapsuleRadius = CapsuleComponent->GetUnscaledCapsuleRadius() * Scale.X;
+	DrawDebugCapsule(GetWorld(), MoveSaved.CapsuleTransform.GetLocation(), Capsulehalfheight, CapsuleRadius, MoveSaved.CapsuleTransform.GetRotation(), Color, false, fShowPackageDuration);
+
+}
+
+
+
+bool ULagCompensationComponent::ServerRewindResult(class ATP2ReseauCharacter* HitCharacter,
+                                                   const FVector_NetQuantize& TraceStart, const FVector_NetQuantize& HitLocation, float HitTime)
+{
+	FSavedMove FrameToCheck = GetFrameToCheckCapsule(HitCharacter, HitTime);
+	
+	return ConfirmHitCapsule(FrameToCheck, HitCharacter, TraceStart, HitLocation);
+}
+
+
+
+FSavedMove ULagCompensationComponent::GetFrameToCheckCapsule(ATP2ReseauCharacter* HitCharacter, float HitTime)
+{
+	bool bReturn =
+		HitCharacter == nullptr ||
+		HitCharacter->GetLagCompensation() == nullptr ||
+		HitCharacter->GetLagCompensation()->SavedMoves.GetHead() == nullptr ||
+		HitCharacter->GetLagCompensation()->SavedMoves.GetTail() == nullptr;
+	if (bReturn) return FSavedMove();
+	
+	// Frame package that we check to verify a hit
+	FSavedMove FrameToCheck;
+	bool bShouldInterpolate = true;
+	// Frame history of the HitCharacter
+	const TDoubleLinkedList<FSavedMove>& History = HitCharacter->GetLagCompensation()->SavedMoves;
+	const float OldestHistoryTime = History.GetTail()->GetValue().Time;
+	const float NewestHistoryTime = History.GetHead()->GetValue().Time;
+	if (OldestHistoryTime > HitTime)
+	{
+		return FSavedMove();
+	}
+	if (OldestHistoryTime == HitTime)
+	{
+		FrameToCheck = History.GetTail()->GetValue();
+		bShouldInterpolate = false;
+	}
+	if (NewestHistoryTime <= HitTime)
+	{
+		FrameToCheck = History.GetHead()->GetValue();
+		bShouldInterpolate = false;
+	}
+
+	TDoubleLinkedList<FSavedMove>::TDoubleLinkedListNode* Younger = History.GetHead();
+	TDoubleLinkedList<FSavedMove>::TDoubleLinkedListNode* Older = Younger;
+	while (Older->GetValue().Time > HitTime) // is Older still younger than HitTime?
+	{
+		if (Older->GetNextNode() == nullptr) break; // Prevent null access
+		Older = Older->GetNextNode();
+		if (Older->GetValue().Time > HitTime)
+		{
+			Younger = Older;
+		}
+	}
+	if (Older->GetValue().Time == HitTime) // highly unlikely, but we found our frame to check
+	{
+		FrameToCheck = Older->GetValue();
+		bShouldInterpolate = false;
+	}
+	if (bShouldInterpolate)
+	{
+		FrameToCheck = InterBetweenFramesCapsule(Older->GetValue(), Younger->GetValue(), HitTime);
+	}
+	FrameToCheck.Character = HitCharacter;
+	return FrameToCheck;
+}
+
+FSavedMove ULagCompensationComponent::InterBetweenFramesCapsule(const FSavedMove& Older, const FSavedMove& Younger,
+	float HitTime)
+{
+	const float Distance = Younger.Time - Older.Time;
+	const float InterpFraction = FMath::Clamp((HitTime - Older.Time) / Distance, 0.f, 1.f);
+
+	FSavedMove InterpFramePackage;
+	InterpFramePackage.Time = HitTime;
+
+	//get the transform of the capsule at the time of the hit
+	FTransform InterpTransform;
+	InterpTransform.SetLocation(FMath::VInterpTo(Older.CapsuleTransform.GetLocation(), Younger.CapsuleTransform.GetLocation(), 1.f, InterpFraction));
+	InterpTransform.SetRotation(FMath::QInterpTo(Older.CapsuleTransform.GetRotation(), Younger.CapsuleTransform.GetRotation(), 1.f, InterpFraction));
+	InterpTransform.SetScale3D(FMath::VInterpTo(Older.CapsuleTransform.GetScale3D(), Younger.CapsuleTransform.GetScale3D(), 1.f, InterpFraction));
+
+	InterpFramePackage.CapsuleTransform = InterpTransform;
+	return InterpFramePackage;
+}
+
+bool ULagCompensationComponent::ConfirmHitCapsule(const FSavedMove& Package, class ATP2ReseauCharacter* HitCharacter,
+	const FVector_NetQuantize& TraceStart, const FVector_NetQuantize& HitLocation)
+{
+	if (!HitCharacter || !HitCharacter->HitCollisionBoxes.Contains(FName("head"))) 
+        return false;
+
+    FSavedMove CurrentFrame;
+    // CacheBoxPositions(HitCharacter, CurrentFrame);
+    MoveCapsule(HitCharacter, Package);
+    EnableCharacterMeshCollision(HitCharacter, ECollisionEnabled::NoCollision);
+
+    UWorld* World = GetWorld();
+    if (!World) 
+    {
+        ResetCapsule(HitCharacter, CurrentFrame);
+        EnableCharacterMeshCollision(HitCharacter, ECollisionEnabled::QueryAndPhysics);
+        return false;
+    }
+
+    const FVector TraceEnd = TraceStart + (HitLocation - TraceStart) * 1.25f;
+    auto PerformHitCheck = [&](UCapsuleComponent* CollisionCapsule) -> bool {
+        if (CollisionCapsule)
+        {
+            CollisionCapsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+            CollisionCapsule->SetCollisionResponseToChannel(ECC_Visibility, ECollisionResponse::ECR_Block);
+            FHitResult HitResult;
+            World->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility);
+            return HitResult.bBlockingHit;
+        }
+        return false;
+    };
+
+	if (PerformHitCheck(HitCharacter->GetCapsuleComponent())) 
+	{
+		ResetCapsule(HitCharacter, CurrentFrame);
+		EnableCharacterMeshCollision(HitCharacter, ECollisionEnabled::QueryAndPhysics);
+		return true; 
+	}
+
+    // No hit detected
+    ResetCapsule(HitCharacter, CurrentFrame);
+    EnableCharacterMeshCollision(HitCharacter, ECollisionEnabled::QueryAndPhysics);
+    return false;
+}
+
+void ULagCompensationComponent::MoveCapsule(ATP2ReseauCharacter* HitCharacter, const FSavedMove& Package)
+{
+	if (HitCharacter == nullptr) return;
+	// Move the capsule component to the position of the hit
+	if (HitCharacter->GetCapsuleComponent())
+	{
+		HitCharacter->GetCapsuleComponent()->SetWorldTransform(Package.CapsuleTransform);
+	}
+}
+
+void ULagCompensationComponent::ResetCapsule(ATP2ReseauCharacter* HitCharacter, const FSavedMove& Package)
+{
+	if (HitCharacter == nullptr) return;
+	if (HitCharacter->GetCapsuleComponent())
+	{
+		HitCharacter->GetCapsuleComponent()->SetWorldTransform(Package.CapsuleTransform);
+	}
+}
 

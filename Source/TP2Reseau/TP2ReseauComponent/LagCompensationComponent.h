@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "TP2Reseau/Character/TP2ReseauCharacter.h"
 #include "LagCompensationComponent.generated.h"
 
@@ -47,6 +48,19 @@ struct FServerSideRewindResult
 	bool bHeadShot;
 };
 
+USTRUCT(BlueprintType)
+struct FSavedMove
+{
+	GENERATED_BODY();
+	UPROPERTY()
+	float Time;
+	UPROPERTY()
+	FTransform CapsuleTransform;
+
+	UPROPERTY()
+	ATP2ReseauCharacter* Character;
+};
+
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class TP2RESEAU_API ULagCompensationComponent : public UActorComponent
 {
@@ -71,28 +85,42 @@ protected:
 	void EnableCharacterMeshCollision(ATP2ReseauCharacter* HitCharacter, ECollisionEnabled::Type CollisionEnabled);
 	void SaveFramePackage();
 	FFramePackage GetFrameToCheck(ATP2ReseauCharacter* HitCharacter, float HitTime);
-
 private:
 	UPROPERTY()
 	ATP2ReseauCharacter* Character;
-
 	UPROPERTY()
 	class ATP2PlayerController* Controller;
-
 	TDoubleLinkedList<FFramePackage> FrameHistory;
-
 	UPROPERTY(EditAnywhere)
 	float MaxRecordTime = 2.f;
-
-	
 	UPROPERTY(EditAnywhere)
 	bool bShowPackage = false;
-
 	UPROPERTY(EditAnywhere)
 	float fShowPackageDuration = 1.f;
-
-public:	
-
+public:
 	FORCEINLINE void SetShowPackage(bool bShow) { bShowPackage = bShow; }
 	FORCEINLINE void SetShowPackageDuration(float Duration) { fShowPackageDuration = Duration; }
+
+public :
+	TDoubleLinkedList<FSavedMove> SavedMoves;
+	bool ServerRewindResult(class ATP2ReseauCharacter* HitCharacter, const FVector_NetQuantize& TraceStart, const FVector_NetQuantize& HitLocation, float HitTime);
+
+private :
+	void SavedMove();
+
+	UPROPERTY()
+	UCapsuleComponent* CapsuleComponent;
+
+	void ShowHistory(FSavedMove MoveSaved, const FColor& Color, float Duration);
+
+protected:
+	
+	FSavedMove GetFrameToCheckCapsule(ATP2ReseauCharacter* HitCharacter, float HitTime);
+	FSavedMove InterBetweenFramesCapsule(const FSavedMove& Older, const FSavedMove& Younger, float HitTime);
+
+	bool ConfirmHitCapsule(const FSavedMove& Package, class ATP2ReseauCharacter* HitCharacter, const FVector_NetQuantize& TraceStart, const FVector_NetQuantize& HitLocation);
+	void MoveCapsule(ATP2ReseauCharacter* HitCharacter,const FSavedMove& Package);
+	void ResetCapsule(ATP2ReseauCharacter* HitCharacter, const FSavedMove& Package);
+
+
 };

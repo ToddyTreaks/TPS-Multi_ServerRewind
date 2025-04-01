@@ -44,7 +44,7 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
 						{
 							UGameplayStatics::ApplyDamage(Character, 100.f, InstigatorController, this, UDamageType::StaticClass());
 						}
-						if (!HasAuthority() && bUseServerSideRewind)
+						if (HasAuthority() && bUseServerSideRewind)
 						{
 							TP2OwnerCharacter = TP2OwnerCharacter == nullptr ? Cast<ATP2ReseauCharacter>(OwnerPawn) : TP2OwnerCharacter;
 							TP2OwnerController = TP2OwnerController == nullptr ? Cast<ATP2PlayerController>(InstigatorController) : TP2OwnerController;
@@ -52,7 +52,9 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
 							if (TP2OwnerCharacter && TP2OwnerController && TP2OwnerCharacter->GetLagCompensation())
 							{
 								TP2OwnerCharacter->GetLagCompensation()->ServerScoreRequest(Character, Start, HitTarget, TP2OwnerController->GetServerTime() - TP2OwnerController->SingleTripTime, this);
-								DrawDebugSphere(GetWorld(), HitTarget, 30.f, 12, FColor::Red, false, 5.f, 0, 4.f);
+								//DrawDebugSphere(GetWorld(), HitTarget, 30.f, 12, FColor::Red, false, 5.f, 0, 4.f);
+								DrawDebugCapsule(GetWorld(), HitTarget, 88.f, 37.f, FQuat::Identity, FColor::Red, false, 5.f, 0, 4.f);
+
 							}
 						}
 					}
